@@ -7,7 +7,8 @@ export const CATEGORIES = [
 export const PLATFORMS = ['Claude', 'ChatGPT', 'Gemini', 'Midjourney', 'Other'];
 
 export function titleFromContent(content: string): string {
-  const line = content.split('\n').map((s) => s.trim()).find(Boolean) ?? 'Untitled';
+  const raw = content.split('\n').map((s) => s.trim()).find(Boolean) ?? 'Untitled';
+  const line = raw.replace(/^#{1,6}\s+/, '').replace(/^(\*\*|__|\*|_)(.+)\1$/, '$2').trim() || raw;
   return line.length > 60 ? line.slice(0, 57) + '…' : line;
 }
 export const parseTags = (s: string): string[] => [...new Set(s.split(',').map((t) => t.trim()).filter(Boolean))];

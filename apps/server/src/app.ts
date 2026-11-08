@@ -30,7 +30,9 @@ export function buildApp({ db, secrets, token, allowedHosts }: AppOptions) {
 
   app.setErrorHandler((err, _req, reply) => {
     if (err instanceof ZodError) return reply.code(400).send({ error: 'validation', issues: err.issues });
-    if (err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') return reply.code(400).send({ error: 'invalid_reference' });
+    if (typeof err === 'object' && err !== null && 'code' in err && err.code === 'SQLITE_CONSTRAINT_FOREIGNKEY') {
+      return reply.code(400).send({ error: 'invalid_reference' });
+    }
     app.log.error(err);
     return reply.code(500).send({ error: 'internal' });
   });

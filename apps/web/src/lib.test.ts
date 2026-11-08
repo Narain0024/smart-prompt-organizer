@@ -7,6 +7,11 @@ describe('lib', () => {
     expect(titleFromContent('x'.repeat(100))).toHaveLength(58);
     expect(titleFromContent('   ')).toBe('Untitled');
   });
+  it('drops markdown heading and emphasis markers from derived titles', () => {
+    expect(titleFromContent('# Prompt: Do the thing\nbody')).toBe('Prompt: Do the thing');
+    expect(titleFromContent('### **Bold title**')).toBe('Bold title');
+    expect(titleFromContent('#hashtag stays')).toBe('#hashtag stays');
+  });
   it('parses comma-separated tags, trimming and de-duplicating', () => {
     expect(parseTags(' a, b ,a,, c')).toEqual(['a', 'b', 'c']);
     expect(parseTags('')).toEqual([]);

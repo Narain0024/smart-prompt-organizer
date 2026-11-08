@@ -15,6 +15,9 @@ describe('parseFile', () => {
     expect(parseFile('a.json', '[{"content":"one"}]').items[0].input).toMatchObject({ title: 'one', tags: [] });
     expect(parseFile('b.json', '{"prompts":[{"title":"T","content":"two"}]}').items[0].input?.title).toBe('T');
   });
+  it('derives a clean title from a heading when json has no title', () => {
+    expect(parseFile('a.json', '[{"content":"# Heading line\\nrest"}]').items[0].input?.title).toBe('Heading line');
+  });
   it('reports bad input instead of throwing', () => {
     expect(parseFile('a.json', '{nope').items[0].error).toMatch(/valid JSON/);
     expect(parseFile('a.json', '{"x":1}').items[0].error).toMatch(/array/);
