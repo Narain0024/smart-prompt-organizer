@@ -5,3 +5,6 @@ node_modules
 master.key
 secrets.enc.json
 .env
+dist
+*.bak-stage4
+.DS_Store
