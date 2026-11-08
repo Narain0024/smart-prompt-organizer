@@ -1,0 +1,12 @@
+{
+  "name": "smart-prompt-organizer",
+  "private": true,
+  "type": "module",
+  "workspaces": ["packages/*", "apps/*"],
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "dev:server": "npm run dev -w @ppo/server",
+    "test": "npm run test -w @ppo/server",
+    "typecheck": "npm run typecheck -w @ppo/server"
+  }
+}
