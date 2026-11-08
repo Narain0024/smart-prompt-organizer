@@ -5,6 +5,7 @@ import App from './App';
 import { captureToken } from './api';
 import { applyThemePref, getThemePref } from './theme';
 import './styles.css';
+import './ai.css';
 
 captureToken();
 applyThemePref(getThemePref());

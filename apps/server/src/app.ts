@@ -5,6 +5,7 @@ import { ImportRequest, PROVIDER_IDS, ProjectInput, ProjectUpdate, PromptInput, 
 import type { DB } from './db.js';
 import type { SecretStore } from './secrets.js';
 import * as repo from './repo.js';
+import { registerAiRoutes } from './ai/routes.js';
 import { buildBackup, buildCsv } from './exporter.js';
 import { runImport } from './importer.js';
 
@@ -100,6 +101,8 @@ export function buildApp({ db, secrets, token, allowedHosts }: AppOptions) {
     secrets.delete(z.enum(PROVIDER_IDS).parse(req.params.provider));
     return reply.code(204).send();
   });
+
+  registerAiRoutes(app, db);
 
   return app;
 }

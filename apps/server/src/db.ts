@@ -51,6 +51,14 @@ const MIGRATIONS: string[] = [
   END;
   `,
   `ALTER TABLE projects ADD COLUMN notes TEXT;`,
+  `
+  CREATE TABLE app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL);
+  CREATE TABLE embeddings (
+    prompt_id TEXT NOT NULL REFERENCES prompts(id) ON DELETE CASCADE,
+    model TEXT NOT NULL, content_hash TEXT NOT NULL, dim INTEGER NOT NULL, vector BLOB NOT NULL, updated_at TEXT NOT NULL,
+    PRIMARY KEY (prompt_id, model)
+  );
+  `,
 ];
 
 export function openDb(path: string): DB {

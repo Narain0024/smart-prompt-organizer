@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import type { ImportBody, ImportResult } from '@ppo/shared';
 import { api } from '../api';
+import { autoIndex } from '../indexing';
 import { CATEGORIES } from '../lib';
 import Modal from './Modal';
 
@@ -19,7 +20,7 @@ export default function ImportModal({ title, accept, onClose }: { title: string;
   const preview = useMutation({ mutationFn: () => api.importFiles(body(false)), onSuccess: setResult });
   const commit = useMutation({
     mutationFn: () => api.importFiles(body(true)),
-    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ['prompts'] }); qc.invalidateQueries({ queryKey: ['projects'] }); },
+    onSuccess: (r) => { setResult(r); qc.invalidateQueries({ queryKey: ['prompts'] }); qc.invalidateQueries({ queryKey: ['projects'] }); void autoIndex(qc); },
   });
   const done = commit.isSuccess;
   const clear = () => { setResult(null); preview.reset(); };

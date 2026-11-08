@@ -1,0 +1,4 @@
+.rvrow { display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; align-items: start; padding: 10px 0; border-top: 1px solid var(--line); }
+.ok { color: var(--accent-ink); } .bad { color: var(--danger); }
+.note { background: var(--accent-soft); color: var(--accent-ink); padding: 8px 12px; border-radius: 8px; }
+code.cmd { font-family: var(--mono); background: var(--bg); border: 1px solid var(--line); padding: 1px 6px; border-radius: 5px; }

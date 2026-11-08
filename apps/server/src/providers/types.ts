@@ -1,7 +1,11 @@
 import type { ProviderId } from '@ppo/shared';
 
 export interface ChatMessage { role: 'system' | 'user' | 'assistant'; content: string }
-export interface ChatRequest { model: string; messages: ChatMessage[]; maxTokens?: number; temperature?: number }
+export interface ChatRequest {
+  model: string; messages: ChatMessage[]; maxTokens?: number; temperature?: number;
+  /** Ask the model to answer as JSON matching this JSON Schema (where the provider supports it). */
+  jsonSchema?: Record<string, unknown>;
+}
 export interface ChatResult { text: string; model: string }
 export interface EmbedResult { vectors: number[][]; model: string }
 

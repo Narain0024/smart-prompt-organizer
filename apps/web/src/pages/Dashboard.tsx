@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../api';
+import { autoIndex } from '../indexing';
 import { timeAgo, titleFromContent } from '../lib';
 
 export default function Dashboard() {
@@ -11,7 +12,7 @@ export default function Dashboard() {
   const recent = useQuery({ queryKey: ['prompts', 'dash', 'recent'], queryFn: () => api.list({ limit: 6 }) });
   const quick = useMutation({
     mutationFn: () => api.create({ title: titleFromContent(draft), content: draft, tags: [], isFavorite: false, isPinned: false }),
-    onSuccess: () => { setDraft(''); qc.invalidateQueries({ queryKey: ['prompts'] }); },
+    onSuccess: () => { setDraft(''); qc.invalidateQueries({ queryKey: ['prompts'] }); void autoIndex(qc); },
   });
   const stat = (v?: number) => (v === undefined ? '—' : String(v));
 

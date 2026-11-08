@@ -3,6 +3,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api, downloadExport } from '../api';
 import { saveBlob } from '../lib';
 import ImportModal from '../components/ImportModal';
+import AiSettingsCard from '../components/AiSettingsCard';
 import { applyThemePref, getThemePref, type ThemePref } from '../theme';
 
 const PROVIDERS: { id: string; label: string }[] = [
@@ -61,9 +62,10 @@ export default function Settings() {
           <button className="btn" onClick={() => setRestoring(true)}>Restore from backup…</button>
         </div>
       </section>
+      <AiSettingsCard />
       <section className="card">
-        <h2>AI providers</h2>
-        <p className="muted">Keys are encrypted by the local server and never sent back to the browser. They are stored now, but no AI feature uses them until Stage 4.</p>
+        <h2>Cloud provider keys (not used yet)</h2>
+        <p className="muted">Keys are encrypted by the local server and never sent back to the browser. Cloud providers are not connected yet: the AI features use local Ollama only, so these keys are stored but unused.</p>
         {secrets.isError && <div className="err" role="alert">{(secrets.error as Error).message}</div>}
         {PROVIDERS.map((p) => <ProviderRow key={p.id} {...p} saved={!!secrets.data?.providers[p.id]} />)}
       </section>

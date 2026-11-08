@@ -112,9 +112,9 @@ export function restoreVersion(db: DB, id: string, version: number): Prompt | nu
   return updatePrompt(db, id, { title: v.title, content: v.content, changeReason: `Restored from v${version}` });
 }
 
-type Filters = Pick<ListOptions, 'category' | 'favorite' | 'archived' | 'projectId'>;
+export type Filters = Pick<ListOptions, 'category' | 'favorite' | 'archived' | 'projectId'>;
 
-function filterSql(o: Filters, alias = ''): { sql: string; args: unknown[] } {
+export function filterSql(o: Filters, alias = ''): { sql: string; args: unknown[] } {
   const a = alias ? `${alias}.` : '';
   const sql = [`${a}deleted_at IS NULL`, `${a}archived = ?`];
   const args: unknown[] = [o.archived ? 1 : 0];
