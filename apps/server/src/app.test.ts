@@ -47,4 +47,16 @@ describe('API security and behaviour', () => {
     expect(list.body).not.toContain('sk-test-123');
     expect(secrets.get('openai')).toBe('sk-test-123');
   });
+
+  it('rejects an unknown collection id, serves exports as attachments, and previews imports', async () => {
+    const { app } = mk();
+    const bad = await app.inject({ method: 'POST', url: '/api/prompts', headers: auth, payload: { title: 'T', content: 'x', projectId: 'nope' } });
+    expect(bad.statusCode).toBe(400);
+    expect((await app.inject('/api/export')).statusCode).toBe(401);
+    const exp = await app.inject({ url: '/api/export?format=csv', headers: auth });
+    expect(exp.headers['content-disposition']).toContain('attachment');
+    const imp = await app.inject({ method: 'POST', url: '/api/import', headers: auth, payload: { files: [{ name: 'a.txt', text: 'hello' }] } });
+    expect(imp.json().summary.new).toBe(1);
+    expect(imp.json().imported).toBeNull();
+  });
 });

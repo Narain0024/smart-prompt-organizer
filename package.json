@@ -5,6 +5,7 @@
   "workspaces": ["packages/*", "apps/*"],
   "engines": { "node": ">=20" },
   "scripts": {
+    "dev": "node scripts/dev.mjs",
     "dev:server": "npm run dev -w @ppo/server",
     "dev:web": "npm run dev -w @ppo/web",
     "test": "npm run test -w @ppo/server && npm run test -w @ppo/web",

@@ -50,6 +50,7 @@ const MIGRATIONS: string[] = [
     VALUES (new.seq, new.title, new.content, new.description);
   END;
   `,
+  `ALTER TABLE projects ADD COLUMN notes TEXT;`,
 ];
 
 export function openDb(path: string): DB {

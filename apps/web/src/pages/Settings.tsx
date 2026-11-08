@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { api } from '../api';
+import { api, downloadExport } from '../api';
+import { saveBlob } from '../lib';
+import ImportModal from '../components/ImportModal';
 import { applyThemePref, getThemePref, type ThemePref } from '../theme';
 
 const PROVIDERS: { id: string; label: string }[] = [
@@ -36,6 +38,8 @@ function ProviderRow({ id, label, saved }: { id: string; label: string; saved: b
 export default function Settings() {
   const [theme, setTheme] = useState<ThemePref>(getThemePref());
   const secrets = useQuery({ queryKey: ['secrets'], queryFn: api.secrets });
+  const [restoring, setRestoring] = useState(false);
+  const backup = useMutation({ mutationFn: async () => { const r = await downloadExport('json'); saveBlob(r.blob, r.filename); } });
   const pick = (t: ThemePref) => { setTheme(t); applyThemePref(t); };
   return (
     <>
@@ -49,11 +53,21 @@ export default function Settings() {
         </div>
       </section>
       <section className="card">
+        <h2>Backup and restore</h2>
+        <p className="muted">A backup holds every prompt with its full version history, plus collections. Restoring skips prompts you already have, so it is safe to run twice.</p>
+        {backup.isError && <div className="err" role="alert">{(backup.error as Error).message}</div>}
+        <div className="row">
+          <button className="btn p" onClick={() => backup.mutate()} disabled={backup.isPending}>{backup.isPending ? 'Preparing…' : 'Download full backup'}</button>
+          <button className="btn" onClick={() => setRestoring(true)}>Restore from backup…</button>
+        </div>
+      </section>
+      <section className="card">
         <h2>AI providers</h2>
         <p className="muted">Keys are encrypted by the local server and never sent back to the browser. They are stored now, but no AI feature uses them until Stage 4.</p>
         {secrets.isError && <div className="err" role="alert">{(secrets.error as Error).message}</div>}
         {PROVIDERS.map((p) => <ProviderRow key={p.id} {...p} saved={!!secrets.data?.providers[p.id]} />)}
       </section>
+      {restoring && <ImportModal title="Restore from backup" accept=".json" onClose={() => setRestoring(false)} />}
     </>
   );
 }

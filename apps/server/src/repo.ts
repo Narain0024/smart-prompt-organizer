@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto';
-import type { Prompt, PromptInput, PromptUpdate, PromptVersion } from '@ppo/shared';
+import type { Project, Prompt, PromptInput, PromptUpdate, PromptVersion } from '@ppo/shared';
+
+type ProjectInputT = { name: string; description?: string | null; notes?: string | null };
 import type { DB } from './db.js';
 
 const now = () => new Date().toISOString();
@@ -83,18 +85,19 @@ export function softDeletePrompt(db: DB, id: string): boolean {
   return db.prepare('UPDATE prompts SET deleted_at = ? WHERE id = ? AND deleted_at IS NULL').run(now(), id).changes > 0;
 }
 
-export interface ListOptions { category?: string; favorite?: boolean; archived?: boolean; limit?: number; offset?: number }
+export interface ListOptions { category?: string; favorite?: boolean; archived?: boolean; projectId?: string; limit?: number; offset?: number }
 
 export function listPrompts(db: DB, o: ListOptions = {}): Prompt[] {
-  const where = ['deleted_at IS NULL', 'archived = ?'];
-  const args: unknown[] = [o.archived ? 1 : 0];
-  if (o.category) { where.push('category = ?'); args.push(o.category); }
-  if (o.favorite) where.push('is_favorite = 1');
-  args.push(Math.min(o.limit ?? 50, 200), o.offset ?? 0);
+  const f = filterSql(o);
   const rows = db.prepare(
-    `SELECT * FROM prompts WHERE ${where.join(' AND ')} ORDER BY is_pinned DESC, updated_at DESC LIMIT ? OFFSET ?`,
-  ).all(...args);
+    `SELECT * FROM prompts WHERE ${f.sql} ORDER BY is_pinned DESC, updated_at DESC LIMIT ? OFFSET ?`,
+  ).all(...f.args, Math.min(o.limit ?? 50, 200), o.offset ?? 0);
   return rows.map((r) => hydrate(db, r));
+}
+
+/** Every non-deleted prompt, archived included, oldest first. Used by export. */
+export function listAllPrompts(db: DB): Prompt[] {
+  return db.prepare('SELECT * FROM prompts WHERE deleted_at IS NULL ORDER BY created_at ASC, seq ASC').all().map((r) => hydrate(db, r));
 }
 
 export function listVersions(db: DB, id: string): PromptVersion[] {
@@ -109,7 +112,7 @@ export function restoreVersion(db: DB, id: string, version: number): Prompt | nu
   return updatePrompt(db, id, { title: v.title, content: v.content, changeReason: `Restored from v${version}` });
 }
 
-type Filters = Pick<ListOptions, 'category' | 'favorite' | 'archived'>;
+type Filters = Pick<ListOptions, 'category' | 'favorite' | 'archived' | 'projectId'>;
 
 function filterSql(o: Filters, alias = ''): { sql: string; args: unknown[] } {
   const a = alias ? `${alias}.` : '';
@@ -117,6 +120,7 @@ function filterSql(o: Filters, alias = ''): { sql: string; args: unknown[] } {
   const args: unknown[] = [o.archived ? 1 : 0];
   if (o.category) { sql.push(`${a}category = ?`); args.push(o.category); }
   if (o.favorite) sql.push(`${a}is_favorite = 1`);
+  if (o.projectId) { sql.push(`${a}project_id = ?`); args.push(o.projectId); }
   return { sql: sql.join(' AND '), args };
 }
 
@@ -137,4 +141,74 @@ export function searchPrompts(db: DB, q: string, limit = 25, o: Filters = {}): P
      ORDER BY bm25(prompts_fts) LIMIT ?`,
   ).all(match, ...f.args, Math.min(limit, 100));
   return rows.map((r) => hydrate(db, r));
+}
+
+// ---- collections (projects) ----
+const toProject = (r: any): Project => ({
+  id: r.id, name: r.name, description: r.description, notes: r.notes, createdAt: r.created_at, promptCount: r.n ?? 0,
+});
+const PROJECT_SELECT = `SELECT p.*, (SELECT COUNT(*) FROM prompts x WHERE x.project_id = p.id AND x.deleted_at IS NULL) AS n FROM projects p`;
+
+export function listProjects(db: DB): Project[] {
+  return db.prepare(`${PROJECT_SELECT} ORDER BY p.created_at DESC`).all().map(toProject);
+}
+export function getProject(db: DB, id: string): Project | null {
+  const r = db.prepare(`${PROJECT_SELECT} WHERE p.id = ?`).get(id);
+  return r ? toProject(r) : null;
+}
+export function createProject(db: DB, input: ProjectInputT): Project {
+  const id = randomUUID();
+  db.prepare('INSERT INTO projects (id, name, description, notes, created_at) VALUES (?, ?, ?, ?, ?)')
+    .run(id, input.name, input.description ?? null, input.notes ?? null, now());
+  return getProject(db, id)!;
+}
+export function updateProject(db: DB, id: string, patch: Partial<ProjectInputT>): Project | null {
+  const cur = getProject(db, id);
+  if (!cur) return null;
+  const pick = <T>(v: T | undefined, old: T) => (v !== undefined ? v : old);
+  db.prepare('UPDATE projects SET name = ?, description = ?, notes = ? WHERE id = ?')
+    .run(pick(patch.name, cur.name), pick(patch.description, cur.description), pick(patch.notes, cur.notes), id);
+  return getProject(db, id);
+}
+/** Prompts are kept; they just leave the collection (ON DELETE SET NULL). */
+export function deleteProject(db: DB, id: string): boolean {
+  return db.prepare('DELETE FROM projects WHERE id = ?').run(id).changes > 0;
+}
+export function getOrCreateProjectByName(db: DB, name: string, extra: { description?: string | null; notes?: string | null } = {}): Project {
+  const r = db.prepare('SELECT id FROM projects WHERE name = ? COLLATE NOCASE').get(name) as { id: string } | undefined;
+  return r ? getProject(db, r.id)! : createProject(db, { name, description: extra.description, notes: extra.notes });
+}
+
+// ---- import ----
+export interface ImportPrompt {
+  title: string; content: string; description?: string | null; category?: string | null; platform?: string | null;
+  notes?: string | null; tags: string[]; isFavorite: boolean; isPinned: boolean; archived?: boolean;
+  project?: string | null; createdAt?: string; updatedAt?: string;
+  versions?: { title: string; content: string; changeReason?: string | null; createdAt?: string }[];
+}
+
+/** Inserts one imported prompt with its version history. Call inside a transaction for all-or-nothing imports. */
+export function insertImported(db: DB, it: ImportPrompt): Prompt {
+  const id = randomUUID();
+  const ts = now();
+  const valid = (s?: string) => (s && !Number.isNaN(Date.parse(s)) ? new Date(s).toISOString() : undefined);
+  const created = valid(it.createdAt) ?? ts;
+  const updated = valid(it.updatedAt) ?? created;
+  const projectId = it.project?.trim() ? getOrCreateProjectByName(db, it.project.trim()).id : null;
+  const versions = [...(it.versions ?? [])];
+  const last = versions[versions.length - 1];
+  if (!last || last.content !== it.content || last.title !== it.title) {
+    versions.push({ title: it.title, content: it.content, changeReason: versions.length ? 'Imported (current)' : 'Imported', createdAt: updated });
+  }
+  db.prepare(
+    `INSERT INTO prompts (id, title, content, description, category, platform, notes, project_id,
+      is_favorite, is_pinned, archived, current_version, created_at, updated_at)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+  ).run(id, it.title, it.content, it.description ?? null, it.category ?? null, it.platform ?? null, it.notes ?? null,
+    projectId, it.isFavorite ? 1 : 0, it.isPinned ? 1 : 0, it.archived ? 1 : 0, versions.length, created, updated);
+  setTags(db, id, it.tags);
+  versions.forEach((v, i) =>
+    db.prepare('INSERT INTO prompt_versions VALUES (?, ?, ?, ?, ?, ?)')
+      .run(id, i + 1, v.title, v.content, v.changeReason ?? null, valid(v.createdAt) ?? created));
+  return getPrompt(db, id)!;
 }

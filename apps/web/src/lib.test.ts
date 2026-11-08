@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { emptyToNull, parseTags, timeAgo, titleFromContent } from './lib';
+import { emptyToNull, parseTags, sideBySide, timeAgo, titleFromContent } from './lib';
 
 describe('lib', () => {
   it('derives a title from the first non-empty line, truncated', () => {
@@ -19,5 +19,17 @@ describe('lib', () => {
     const now = Date.now();
     expect(timeAgo(new Date(now - 30_000).toISOString(), now)).toBe('just now');
     expect(timeAgo(new Date(now - 3 * 3600_000).toISOString(), now)).toContain('3');
+  });
+  it('diffs identical text as unchanged', () => {
+    expect(sideBySide('a\nb', 'a\nb').every((r) => !r.changed)).toBe(true);
+  });
+  it('pairs a changed line and keeps the context around it', () => {
+    expect(sideBySide('a\nb\nc', 'a\nB\nc')).toEqual([
+      { left: 'a', right: 'a', changed: false }, { left: 'b', right: 'B', changed: true }, { left: 'c', right: 'c', changed: false },
+    ]);
+  });
+  it('shows removals and additions as one-sided rows', () => {
+    expect(sideBySide('a\nb', 'a')).toEqual([{ left: 'a', right: 'a', changed: false }, { left: 'b', right: null, changed: true }]);
+    expect(sideBySide('a', 'a\nb')[1]).toEqual({ left: null, right: 'b', changed: true });
   });
 });

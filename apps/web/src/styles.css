@@ -81,3 +81,14 @@ dialog::backdrop { background: rgb(0 0 0 / 0.45); }
 .vitem { text-align: left; } .vitem[aria-pressed='true'] { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 pre.pv { margin: 0; white-space: pre-wrap; font: 13px/1.5 var(--mono); max-height: 50vh; overflow: auto; background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 12px; }
 @media (max-width: 640px) { .versions { grid-template-columns: 1fr; } }
+
+.more.down .pop { top: 100%; bottom: auto; margin-top: 4px; }
+.irow { display: flex; gap: 10px; justify-content: space-between; align-items: baseline; padding: 6px 0; border-top: 1px solid var(--line); }
+.scroll { max-height: 40vh; overflow: auto; }
+.diff { display: grid; grid-template-columns: 1fr 1fr; font: 13px/1.5 var(--mono); border: 1px solid var(--line); border-radius: 8px; max-height: 50vh; overflow: auto; background: var(--bg); }
+.dl { white-space: pre-wrap; overflow-wrap: anywhere; padding: 0 8px; min-height: 1.5em; }
+.dl.del { background: color-mix(in srgb, var(--danger) 16%, transparent); }
+.dl.add { background: color-mix(in srgb, var(--accent) 22%, transparent); }
+.dl.del::before { content: '− '; } .dl.add::before { content: '+ '; }
+.dh { font: 600 12px var(--sans); padding: 6px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); }
+.back { color: var(--muted); text-decoration: none; } .back:hover { color: var(--ink); }

@@ -4,6 +4,7 @@ import { api, hasToken } from './api';
 import Dashboard from './pages/Dashboard';
 import Library from './pages/Library';
 import Settings from './pages/Settings';
+import Collections from './pages/Collections';
 import Placeholder from './pages/Placeholder';
 
 const NAV: { path: string; label: string }[] = [
@@ -14,7 +15,6 @@ const NAV: { path: string; label: string }[] = [
 ];
 const PLANNED: Record<string, { title: string; stage: string; blurb: string }> = {
   '/studio': { title: 'Prompt Studio', stage: 'Stage 5', blurb: 'Polish, expand, analyze and build prompts with AI.' },
-  '/collections': { title: 'Collections', stage: 'Stage 7', blurb: 'Group prompts into projects with a development timeline.' },
   '/dna': { title: 'Prompt DNA', stage: 'Stage 6', blurb: 'Evidence-based analytics about how you write prompts.' },
   '/knowledge': { title: 'Knowledge Base', stage: 'Stage 7', blurb: 'Insights and connections across your prompts.' },
 };
@@ -39,10 +39,12 @@ export default function App() {
     );
   }
 
+  const collectionMatch = route.match(/^\/collections(?:\/([^/]+))?$/);
   let page;
   if (route === '/') page = <Dashboard />;
   else if (route === '/prompts') page = <Library />;
   else if (route === '/settings') page = <Settings />;
+  else if (collectionMatch) page = <Collections id={collectionMatch[1]} />;
   else if (PLANNED[route]) page = <Placeholder {...PLANNED[route]} />;
   else page = <Placeholder title="Page not found" stage="" blurb="That address doesn’t exist." />;
 
@@ -51,7 +53,7 @@ export default function App() {
       <nav className="side" aria-label="Main">
         <div className="logo">Prompt Organizer</div>
         {NAV.map((n) => (
-          <a key={n.path} className="nav" href={`#${n.path}`} aria-current={route === n.path ? 'page' : undefined}>{n.label}</a>
+          <a key={n.path} className="nav" href={`#${n.path}`} aria-current={route === n.path || (n.path !== '/' && route.startsWith(n.path + '/')) ? 'page' : undefined}>{n.label}</a>
         ))}
       </nav>
       <main className="main">

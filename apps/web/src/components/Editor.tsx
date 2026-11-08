@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react';
-import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import type { Prompt } from '@ppo/shared';
 import { api } from '../api';
 import { CATEGORIES, PLATFORMS, emptyToNull, parseTags } from '../lib';
@@ -10,8 +10,9 @@ export default function Editor({ prompt, onClose }: { prompt: Prompt | null; onC
   const [f, setF] = useState({
     title: prompt?.title ?? '', content: prompt?.content ?? '', description: prompt?.description ?? '',
     category: prompt?.category ?? '', platform: prompt?.platform ?? '', tags: (prompt?.tags ?? []).join(', '),
-    notes: prompt?.notes ?? '', reason: '',
+    notes: prompt?.notes ?? '', projectId: prompt?.projectId ?? '', reason: '',
   });
+  const projects = useQuery({ queryKey: ['projects', 'list'], queryFn: api.projects });
   const set = (k: keyof typeof f) => (e: { target: { value: string } }) => setF({ ...f, [k]: e.target.value });
 
   const save = useMutation({
@@ -19,13 +20,13 @@ export default function Editor({ prompt, onClose }: { prompt: Prompt | null; onC
       const base = {
         title: f.title.trim(), content: f.content, description: emptyToNull(f.description),
         category: emptyToNull(f.category), platform: emptyToNull(f.platform), notes: emptyToNull(f.notes),
-        tags: parseTags(f.tags),
+        tags: parseTags(f.tags), projectId: f.projectId || null,
       };
       return prompt
         ? api.update(prompt.id, { ...base, changeReason: f.reason.trim() || undefined })
         : api.create({ ...base, isFavorite: false, isPinned: false });
     },
-    onSuccess: () => { qc.invalidateQueries({ queryKey: ['prompts'] }); onClose(); },
+    onSuccess: () => { qc.invalidateQueries({ queryKey: ['prompts'] }); qc.invalidateQueries({ queryKey: ['projects'] }); onClose(); },
   });
   const submit = (e: FormEvent) => { e.preventDefault(); save.mutate(); };
 
@@ -41,6 +42,12 @@ export default function Editor({ prompt, onClose }: { prompt: Prompt | null; onC
         </div>
         <datalist id="cats">{CATEGORIES.map((c) => <option key={c} value={c} />)}</datalist>
         <datalist id="plats">{PLATFORMS.map((c) => <option key={c} value={c} />)}</datalist>
+        <label className="field"><span>Collection</span>
+          <select className="inp" style={{ width: '100%' }} value={f.projectId} onChange={set('projectId')}>
+            <option value="">None</option>
+            {projects.data?.items.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
+          </select>
+        </label>
         <label className="field"><span>Tags (comma separated)</span><input className="inp" value={f.tags} onChange={set('tags')} /></label>
         <label className="field"><span>Personal notes (optional)</span><textarea className="inp" rows={2} value={f.notes} onChange={set('notes')} /></label>
         {prompt && <label className="field"><span>Reason for change (saved with the new version)</span><input className="inp" value={f.reason} onChange={set('reason')} maxLength={500} /></label>}
