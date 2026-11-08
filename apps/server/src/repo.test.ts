@@ -64,3 +64,15 @@ describe('prompt repository', () => {
     expect(repo.listPrompts(db, { archived: true }).map((x) => x.id)).toEqual([a.id]);
   });
 });
+
+describe('filters and counts', () => {
+  it('applies category and favorite filters to search and counts', () => {
+    repo.createPrompt(db, { ...base, title: 'A', category: 'Android Development', isFavorite: true });
+    repo.createPrompt(db, { ...base, title: 'B', category: 'Web Development' });
+    expect(repo.searchPrompts(db, 'kotlin')).toHaveLength(2);
+    expect(repo.searchPrompts(db, 'kotlin', 25, { category: 'Web Development' }).map((p) => p.title)).toEqual(['B']);
+    expect(repo.searchPrompts(db, 'kotlin', 25, { favorite: true }).map((p) => p.title)).toEqual(['A']);
+    expect(repo.countPrompts(db)).toBe(2);
+    expect(repo.countPrompts(db, { favorite: true })).toBe(1);
+  });
+});

@@ -6,7 +6,8 @@
   "engines": { "node": ">=20" },
   "scripts": {
     "dev:server": "npm run dev -w @ppo/server",
-    "test": "npm run test -w @ppo/server",
-    "typecheck": "npm run typecheck -w @ppo/server"
+    "dev:web": "npm run dev -w @ppo/web",
+    "test": "npm run test -w @ppo/server && npm run test -w @ppo/web",
+    "typecheck": "npm run typecheck -w @ppo/server && npm run typecheck -w @ppo/web"
   }
 }

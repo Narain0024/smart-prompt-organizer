@@ -43,10 +43,11 @@ export function buildApp({ db, secrets, token, allowedHosts }: AppOptions) {
       favorite: z.enum(['true', 'false']).optional(), archived: z.enum(['true', 'false']).optional(),
       limit: z.coerce.number().int().positive().optional(), offset: z.coerce.number().int().min(0).optional(),
     }).parse(req.query);
+    const opts = { category: q.category, favorite: q.favorite === 'true', archived: q.archived === 'true' };
     const items = q.q
-      ? repo.searchPrompts(db, q.q, q.limit)
-      : repo.listPrompts(db, { category: q.category, favorite: q.favorite === 'true', archived: q.archived === 'true', limit: q.limit, offset: q.offset });
-    return { items };
+      ? repo.searchPrompts(db, q.q, q.limit, opts)
+      : repo.listPrompts(db, { ...opts, limit: q.limit, offset: q.offset });
+    return { items, total: q.q ? items.length : repo.countPrompts(db, opts) };
   });
 
   app.post('/api/prompts', async (req, reply) => reply.code(201).send(repo.createPrompt(db, PromptInput.parse(req.body))));

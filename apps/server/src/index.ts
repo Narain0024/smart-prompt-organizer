@@ -21,4 +21,6 @@ const app = buildApp({
 await app.listen({ host: '127.0.0.1', port });
 console.log(`Smart Prompt Organizer API on http://127.0.0.1:${port}`);
 console.log(`Data directory: ${dataDir}`);
+const webUrl = process.env.PPO_WEB_URL ?? 'http://localhost:5173';
+console.log(`Open the app: ${webUrl}/#token=${token}`);
 console.log(`Session token (send as x-session-token): ${token}`);

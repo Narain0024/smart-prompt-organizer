@@ -109,15 +109,32 @@ export function restoreVersion(db: DB, id: string, version: number): Prompt | nu
   return updatePrompt(db, id, { title: v.title, content: v.content, changeReason: `Restored from v${version}` });
 }
 
+type Filters = Pick<ListOptions, 'category' | 'favorite' | 'archived'>;
+
+function filterSql(o: Filters, alias = ''): { sql: string; args: unknown[] } {
+  const a = alias ? `${alias}.` : '';
+  const sql = [`${a}deleted_at IS NULL`, `${a}archived = ?`];
+  const args: unknown[] = [o.archived ? 1 : 0];
+  if (o.category) { sql.push(`${a}category = ?`); args.push(o.category); }
+  if (o.favorite) sql.push(`${a}is_favorite = 1`);
+  return { sql: sql.join(' AND '), args };
+}
+
+export function countPrompts(db: DB, o: Filters = {}): number {
+  const f = filterSql(o);
+  return (db.prepare(`SELECT COUNT(*) AS n FROM prompts WHERE ${f.sql}`).get(...f.args) as { n: number }).n;
+}
+
 /** Keyword search (BM25). Tokens are quoted so user input can never break FTS syntax. */
-export function searchPrompts(db: DB, q: string, limit = 25): Prompt[] {
+export function searchPrompts(db: DB, q: string, limit = 25, o: Filters = {}): Prompt[] {
   const tokens = q.match(/[\p{L}\p{N}_]+/gu) ?? [];
   if (!tokens.length) return [];
   const match = tokens.map((t) => `"${t}"*`).join(' ');
+  const f = filterSql(o, 'p');
   const rows = db.prepare(
     `SELECT p.* FROM prompts_fts JOIN prompts p ON p.seq = prompts_fts.rowid
-     WHERE prompts_fts MATCH ? AND p.deleted_at IS NULL
+     WHERE prompts_fts MATCH ? AND ${f.sql}
      ORDER BY bm25(prompts_fts) LIMIT ?`,
-  ).all(match, Math.min(limit, 100));
+  ).all(match, ...f.args, Math.min(limit, 100));
   return rows.map((r) => hydrate(db, r));
 }
